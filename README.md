@@ -12,10 +12,16 @@ run project
 npm run build
 ```
 
-or
+install project
 
 ```
-yarn build
+make install
+```
+
+launch project with webpack
+
+```
+make develop
 ```
 
 to bundle your application
