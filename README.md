@@ -23,5 +23,3 @@ launch project with webpack
 ```
 make develop
 ```
-
-to bundle your application
