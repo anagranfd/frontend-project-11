@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "webpack serve --mode=development",
-    "build": "make build --output public",
+    "build": "make build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
