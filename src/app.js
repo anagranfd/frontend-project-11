@@ -1,10 +1,35 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import onChange from 'on-change';
 import axios from 'axios';
+import i18next from 'i18next';
 
 import render from './render';
 import validate, { previousUrls } from './validation';
+import resources from './locales/index.js';
 
 export default () => {
+  const count = {};
+
+  i18next
+    .init({
+      lng: 'ru',
+      debug: true,
+      resources,
+    })
+    .then(() => {
+      count.count = 0;
+      count.lng = i18next.language;
+    });
+
+  // .then(() => {
+  //   const i18nextInstance = i18next.createInstance();
+  //   return i18nextInstance.init({
+  //     lng: 'ru',
+  //     debug: true,
+  //     resources,
+  //   });
+  // })
+
   const urlContent = {};
 
   const elements = {
@@ -86,30 +111,15 @@ export default () => {
               refreshInputState();
               urlContent[nextIndex] = response.data;
               state.form.successFeedback = {
-                message: 'RSS успешно загружен',
+                message: i18next.t('submit.success'),
               };
               elements.fields.link.focus();
               elements.fields.link.value = '';
             })
-            .catch((err) => {
-              if (err.response && err.response.status === 404) {
-                state.signupProcess.processError = {
-                  message:
-                    'Адрес не найден. Пожалуйста, введите существующий URL.',
-                };
-              } else if (err.response) {
-                state.signupProcess.processError = {
-                  message: `Произошла ошибка. ${err.response.data.message}`,
-                };
-              } else if (err.request) {
-                state.signupProcess.processError = {
-                  message: 'Ошибка сети. Повторите запрос позже.',
-                };
-              } else {
-                state.signupProcess.processError = {
-                  message: 'Произошла ошибка. Повторите запрос позже.',
-                };
-              }
+            .catch(() => {
+              state.signupProcess.processError = {
+                message: i18next.t('submit.errors.networkError'),
+              };
             });
         }
       });

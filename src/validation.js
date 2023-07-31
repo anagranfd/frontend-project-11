@@ -1,35 +1,37 @@
+/* eslint-disable import/no-extraneous-dependencies */
 import keyBy from 'lodash/keyBy.js';
 import * as yup from 'yup';
+import i18next from 'i18next';
 
 export const previousUrls = {};
 
-const schema = yup.object().shape({
-  link: yup
-    .string()
-    .url('Ссылка должна быть валидным URL')
-    .test(
-      'is-unique',
-      'RSS уже существует',
-      (value) => !Object.values(previousUrls).includes(value),
-    ),
-});
+export default (data1) => {
+  yup.setLocale({
+    mixed: {
+      test: i18next.t('submit.errors.rssExists'),
+      required: i18next.t('submit.errors.wrongURL'),
+    },
+    string: {
+      url: i18next.t('submit.errors.wrongURL'),
+    },
+  });
 
-export default (data1) => new Promise((resolve, reject) => {
-  if (data1.link === '') {
-    resolve({});
-  } else {
+  const schema = yup.object().shape({
+    link: yup
+      .string()
+      .url()
+      .required()
+      .test(
+        'is-unique',
+        i18next.t('submit.errors.rssExists'),
+        (value) => !Object.values(previousUrls).includes(value)
+      ),
+  });
+
+  return new Promise((resolve, reject) => {
     schema
       .validate(data1, { abortEarly: false })
       .then(() => resolve({}))
       .catch((e) => reject(keyBy(e.inner, 'path')));
-  }
-});
-
-// export default (data1) => {
-//   try {
-//     schema.validateSync(data1, { abortEarly: false });
-//     return {};
-//   } catch (e) {
-//     return keyBy(e.inner, 'path');
-//   }
-// };
+  });
+};
