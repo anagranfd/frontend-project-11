@@ -166,8 +166,8 @@ export default () => {
               // renderPosts(urlContent);
 
               // renderRss(content);
-              // elements.fields.link.focus();
-              // elements.fields.link.value = '';
+              elements.fields.link.focus();
+              elements.fields.link.value = '';
               previousUrls[nextIndex] = nextLink;
               state.signupProcess.processState = 'added';
               state.signupProcess.processError = null;
