@@ -3,9 +3,7 @@ import keyBy from 'lodash/keyBy.js';
 import * as yup from 'yup';
 import i18next from 'i18next';
 
-export const previousUrls = {};
-
-export default (data1) => {
+export default (data1, previousUrls) => {
   yup.setLocale({
     mixed: {
       test: i18next.t('submit.errors.rssExists'),
