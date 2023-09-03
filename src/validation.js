@@ -22,7 +22,7 @@ export default (data1, previousUrls) => {
       .test(
         'is-unique',
         i18next.t('submit.errors.rssExists'),
-        (value) => !Object.values(previousUrls).includes(value)
+        (value) => !Object.values(previousUrls).includes(value),
       ),
   });
 

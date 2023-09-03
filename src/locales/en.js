@@ -10,5 +10,6 @@ export default {
       },
     },
     add: 'Add',
+    view: 'View',
   },
 };
