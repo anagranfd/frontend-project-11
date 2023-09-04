@@ -15,6 +15,7 @@ const getRss = (url) => axios
   .catch((e) => console.log(e));
 
 const previousUrls = {};
+const viewedLinks = {};
 
 const renderFeeds = (content) => {
   const container = document.querySelector('.titles');
@@ -61,6 +62,11 @@ const renderPosts = (content) => {
     btnElement.classList.add('btn', 'btn-outline-primary', 'add-post');
     btnElement.textContent = i18next.t('view');
 
+    if (viewedLinks[link]) {
+      rssPostElement.classList.toggle('fw-bold', false);
+      rssPostElement.classList.add('text-muted', 'fw-normal');
+    }
+
     btnElement.addEventListener('click', () => {
       const modalBody = document.querySelector('.modal-body');
       modalBody.innerHTML = '';
@@ -75,8 +81,9 @@ const renderPosts = (content) => {
         window.location.href = link;
       });
 
-      rssPostElement.classList.toggle('fw-bold');
+      rssPostElement.classList.toggle('fw-bold', false);
       rssPostElement.classList.add('text-muted', 'fw-normal');
+      viewedLinks[link] = true;
     });
 
     btnContainer.append(btnElement);
@@ -113,7 +120,6 @@ const updatePosts = (content, links) => {
         }
       })
       .then(() => {
-        renderFeeds(content);
         renderPosts(content);
       });
   });
@@ -183,10 +189,6 @@ export default () => {
           state.signupProcess.processState = 'error';
         } else {
           const nextLink = state.form.fields.link;
-          // if (nextLink === '') {
-          //   state.form.successFeedback = null;
-          //   return;
-          // }
 
           const nextIndex = Object.keys(previousUrls).length;
           state.signupProcess.processState = 'sending';

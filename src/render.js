@@ -22,17 +22,12 @@ const handleProcessState = (elements, processState) => {
   }
 };
 
-const renderErrors = (elements, errors, prevError, state) => {
+const renderErrors = (elements, errors, prevError) => {
   const [fieldName, fieldElement] = Object.entries(elements.fields)[0];
-  // console.log(fieldName);
-  // console.log(fieldElement);
-  // console.log(errors);
   const { feedbackElement } = elements;
   const error = errors[fieldName];
   const fieldHadError = has(prevError, fieldName);
-  // console.log(fieldHadError);
   const fieldHasError = has(errors, fieldName);
-  // console.log(fieldHasError);
 
   if (!fieldHadError && !fieldHasError) {
     return;
@@ -56,9 +51,7 @@ const renderProcessError = (elements, error, prevError) => {
   const fieldElement = elements.fields.link;
   const { feedbackElement } = elements;
   const fieldHadError = prevError !== null;
-  // console.log(fieldHadError);
   const fieldHasError = error !== null;
-  // console.log(fieldHasError);
 
   if (!fieldHadError && !fieldHasError) {
     return;
@@ -82,9 +75,7 @@ const renderSuccessFeedback = (elements, value, prevValue) => {
   const fieldElement = elements.fields.link;
   const { feedbackElement } = elements;
   const fieldHadSuccess = prevValue !== null;
-  // console.log(fieldHadError);
   const fieldHasSuccess = value !== null;
-  // console.log(fieldHasError);
 
   if (!fieldHadSuccess && !fieldHasSuccess) {
     return;
@@ -111,17 +102,12 @@ export default (elements, initialState) => (path, value, prevValue) => {
       break;
 
     case 'form.successFeedback':
-      // console.log(value);
       renderSuccessFeedback(elements, value);
       break;
 
     case 'signupProcess.processError':
       elements.submitButton.disabled = false;
       elements.fields.link.disabled = false;
-      // handleProcessError(value);
-      // console.log(value);
-      // console.log(prevValue);
-      // console.log(initialState);
       renderProcessError(elements, value, prevValue, initialState);
       break;
 
@@ -130,9 +116,6 @@ export default (elements, initialState) => (path, value, prevValue) => {
       break;
 
     case 'form.errors':
-      // console.log(value);
-      // console.log(prevValue);
-      // console.log(initialState);
       renderErrors(elements, value, prevValue, initialState);
       break;
 
