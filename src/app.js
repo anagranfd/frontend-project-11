@@ -18,7 +18,7 @@ const previousUrls = {};
 const viewedLinks = {};
 
 const renderFeeds = (content) => {
-  const container = document.querySelector('.titles');
+  const container = document.querySelector('.feeds');
   const rssTitleContainer = document.createElement('div');
 
   Object.values(content.data.feeds).forEach(
@@ -36,12 +36,10 @@ const renderFeeds = (content) => {
 };
 
 const renderPosts = (content) => {
-  const container = document.querySelector('.col.posts');
-  const newPostsContainer = document.createElement('div');
-
+  const container = document.querySelector('.mx-auto.posts');
   Object.values(content.data.posts).forEach(({ title, link, description }) => {
     const postContainer = document.createElement('div');
-    postContainer.classList.add('row');
+    postContainer.classList.add('row', 'mb-3');
 
     const rssPostsContainer = document.createElement('div');
     rssPostsContainer.classList.add('col', 'posts');
@@ -57,9 +55,14 @@ const renderPosts = (content) => {
     const btnElement = document.createElement('button');
     btnElement.setAttribute('type', 'button');
     btnElement.setAttribute('data-bs-toggle', 'modal');
-    btnElement.setAttribute('data-bs-target', '#postModal');
+    btnElement.setAttribute('data-bs-target', '#modal');
     btnElement.setAttribute('data-href', link);
-    btnElement.classList.add('btn', 'btn-outline-primary', 'add-post');
+    btnElement.classList.add(
+      'btn',
+      'btn-outline-primary',
+      'btn-sm',
+      'add-post',
+    );
     btnElement.textContent = i18next.t('view');
 
     if (viewedLinks[link]) {
@@ -69,6 +72,7 @@ const renderPosts = (content) => {
 
     btnElement.addEventListener('click', () => {
       const modalBody = document.querySelector('.modal-body');
+      console.log(modalBody);
       modalBody.innerHTML = '';
       const modalTitle = document.querySelector('.modal-title');
       modalTitle.textContent = title;
@@ -92,14 +96,14 @@ const renderPosts = (content) => {
     postContainer.append(rssPostsContainer);
     postContainer.append(btnContainer);
 
-    newPostsContainer.append(postContainer);
+    container.prepend(postContainer);
   });
-
-  container.prepend(newPostsContainer);
 };
 
-const updatePosts = (content, links) => {
+const updatePosts = (content) => {
   console.log('CHECK!!!');
+  const { links } = content.data;
+  // console.log(links);
   links.forEach(({ id, link }) => {
     getRss(link)
       .then((response) => parse(response.contents))
@@ -116,15 +120,14 @@ const updatePosts = (content, links) => {
 
         const updatedPosts = _.differenceBy(newPosts, posts, 'title');
         if (updatedPosts.length > 0) {
+          console.log(content);
           content.data.posts = [...updatedPosts, ...posts];
+          renderPosts(content);
         }
-      })
-      .then(() => {
-        renderPosts(content);
       });
   });
 
-  setTimeout(() => updatePosts(content, links), 5000);
+  setTimeout(() => updatePosts(content), 5000);
 };
 
 export default () => {
@@ -146,7 +149,7 @@ export default () => {
     container: document.querySelector('.container'),
     form: document.querySelector('form'),
     fields: {
-      link: document.getElementById('floatingInput'),
+      link: document.querySelector('input[aria-label="url"]'),
     },
     submitButton: document.querySelector('button[type="submit"]'),
     feedbackElement: document.querySelector('.feedback'),
@@ -237,6 +240,6 @@ export default () => {
       });
   });
 
-  updatePosts(urlContent, urlContent.data.links);
+  updatePosts(urlContent);
   elements.fields.link.focus();
 };
