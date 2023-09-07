@@ -7,6 +7,7 @@ export default {
         wrongURL: 'Link must be a valid URL',
         networkError: 'Network error. Please try again later.',
         rssExists: 'RSS already exists',
+        rssMissing: 'Does not contain valid RSS',
       },
     },
     add: 'Add',

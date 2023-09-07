@@ -9,8 +9,15 @@ import validate from './validation';
 import resources from './locales/index.js';
 import parse from './parser';
 
+const getProxyUrl = (url) => {
+  const urlWithProxy = new URL('/get', 'https://allorigins.hexlet.app');
+  urlWithProxy.searchParams.set('url', url);
+  urlWithProxy.searchParams.set('disableCache', 'true');
+  return urlWithProxy.toString();
+};
+
 const getRss = (url) => axios
-  .get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`)
+  .get(getProxyUrl(url))
   .then((res) => res.data)
   .catch((e) => console.log(e));
 
@@ -198,6 +205,7 @@ export default () => {
 
           getRss(nextLink)
             .then((response) => {
+              state.signupProcess.processError = null;
               state.form.successFeedback = {
                 message: i18next.t('submit.success'),
               };
@@ -227,14 +235,21 @@ export default () => {
               elements.fields.link.value = '';
               previousUrls[nextIndex] = nextLink;
               state.signupProcess.processState = 'added';
-              state.signupProcess.processError = null;
+              // state.signupProcess.processError = null;
             })
             .then(() => renderFeeds(urlContent))
             .then(() => renderPosts(urlContent))
-            .catch(() => {
-              state.signupProcess.processError = {
-                message: i18next.t('submit.errors.networkError'),
-              };
+            .catch((err) => {
+              if (err.message === 'parsererror') {
+                console.log(state);
+                state.signupProcess.processError = {
+                  message: i18next.t('submit.errors.rssMissing'),
+                };
+              } else {
+                state.signupProcess.processError = {
+                  message: i18next.t('submit.errors.networkError'),
+                };
+              }
             });
         }
       });

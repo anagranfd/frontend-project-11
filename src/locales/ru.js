@@ -7,6 +7,7 @@ export default {
         wrongURL: 'Ссылка должна быть валидным URL',
         networkError: 'Ошибка сети. Повторите запрос позже.',
         rssExists: 'RSS уже существует',
+        rssMissing: 'Ресурс не содержит валидный RSS',
       },
     },
     add: 'Добавить',
