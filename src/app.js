@@ -3,7 +3,6 @@ import onChange from 'on-change';
 import axios from 'axios';
 import i18next from 'i18next';
 import _ from 'lodash';
-
 import render from './render';
 import validate from './validation';
 import resources from './locales/index.js';
@@ -19,65 +18,89 @@ const getProxyUrl = (url) => {
 const getRss = (url) => axios
   .get(getProxyUrl(url))
   .then((res) => res.data)
-  .catch((e) => console.log(e));
+  .catch((e) => Promise.reject(e));
 
-const previousUrls = {};
-const viewedLinks = {};
+// const updatePosts = (state) => {
+//   const { links } = state.data;
+//   const promises = links.map(({ id, link }) =>
+//     getRss(link)
+//       .then((response) => parse(response.contents))
+//       .then((data) => {
+//         const { posts } = state.data;
+//         const { infoItems } = data;
+//         const newPosts = infoItems.map(({ title, link, description }) => ({
+//           id,
+//           title,
+//           link,
+//           description,
+//         }));
+//         const updatedPosts = _.differenceBy(newPosts, posts, 'title');
+//         if (updatedPosts.length > 0) {
+//           state.data.posts = [...updatedPosts, ...posts];
+//         }
+//       })
+//   );
 
-const renderFeeds = (content) => {
-  const container = document.querySelector('.feeds');
-  const rssTitleContainer = document.createElement('div');
+//   Promise.all(promises).finally(() => {
+//     setTimeout(() => updatePosts(state), 5000);
+//   });
+// };
 
-  Object.values(content.data.feeds).forEach(
-    ({ feedTitle, feedDescription }) => {
-      const rssTitleElement = document.createElement('h4');
-      rssTitleElement.textContent = feedTitle;
-      const rssDescElement = document.createElement('p');
-      rssDescElement.textContent = feedDescription;
-      rssTitleContainer.append(rssTitleElement, rssDescElement);
-    },
-  );
+const updatePosts = (state) => {
+  const { links } = state.data;
 
-  container.innerHTML = '';
-  container.append(rssTitleContainer);
+  const promises = links.map(({ link }) => {
+    const timeoutPromise = new Promise((__, reject) => setTimeout(() => reject(new Error('Timeout occurred')), 5000));
+    Promise.race([getRss(link), timeoutPromise])
+      .then((response) => {
+        const content = parse(response.contents);
+
+        const { posts } = state.data;
+        const { infoItems } = content;
+
+        const newPosts = infoItems.map(({ title, link, description }) => ({
+          id: _.uniqueId(),
+          title,
+          link,
+          description,
+        }));
+
+        const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
+
+        if (uniqueNewPosts.length > 0) {
+          state.data.newPosts = uniqueNewPosts;
+          state.data.posts = [...uniqueNewPosts, ...posts];
+        }
+        return Promise.resolve();
+      })
+      .catch((error) => {
+        console.error('An error occurred:', error);
+        if (error.message === 'Timeout occurred') {
+          return Promise.resolve();
+        }
+        return Promise.resolve();
+      });
+  });
+
+  Promise.all(promises).then(() => {
+    setTimeout(() => updatePosts(state), 5000);
+  });
 };
 
-const renderPosts = (content) => {
-  const container = document.querySelector('.mx-auto.posts');
-  Object.values(content.data.posts).forEach(({ title, link, description }) => {
-    const postContainer = document.createElement('div');
-    postContainer.classList.add('row', 'mb-3');
+const addBtnModalPrevEventListener = (state) => {
+  const postsContainer = document.querySelector('.mx-auto.posts');
 
-    const rssPostsContainer = document.createElement('div');
-    rssPostsContainer.classList.add('col', 'posts');
-    const btnContainer = document.createElement('div');
-    btnContainer.classList.add('col-md-auto');
+  postsContainer.addEventListener('click', (e) => {
+    const { target } = e;
 
-    const rssPostElement = document.createElement('a');
-    rssPostElement.textContent = title;
-    rssPostElement.setAttribute('href', link);
-    rssPostElement.setAttribute('style', 'display: block;');
-    rssPostElement.classList.add('fw-bold');
+    if (target.classList.contains('add-post')) {
+      const hrefLink = target.dataset.href;
+      const { title, description } = Object.values(state.data.posts).find(
+        ({ link }) => link === hrefLink,
+      );
 
-    const btnElement = document.createElement('button');
-    btnElement.setAttribute('type', 'button');
-    btnElement.setAttribute('data-bs-toggle', 'modal');
-    btnElement.setAttribute('data-bs-target', '#modal');
-    btnElement.setAttribute('data-href', link);
-    btnElement.classList.add(
-      'btn',
-      'btn-outline-primary',
-      'btn-sm',
-      'add-post',
-    );
-    btnElement.textContent = i18next.t('view');
+      const rssPostElement = document.querySelector(`a[href="${hrefLink}"]`);
 
-    if (viewedLinks[link]) {
-      rssPostElement.classList.toggle('fw-bold', false);
-      rssPostElement.classList.add('text-muted', 'fw-normal');
-    }
-
-    btnElement.addEventListener('click', () => {
       const modalBody = document.querySelector('.modal-body');
       console.log(modalBody);
       modalBody.innerHTML = '';
@@ -89,135 +112,108 @@ const renderPosts = (content) => {
 
       const followLinkBtn = document.querySelector('.to-website');
       followLinkBtn.addEventListener('click', () => {
-        window.location.href = link;
+        window.location.href = hrefLink;
       });
 
+      state.viewedLinks[hrefLink] = true;
+      console.log(rssPostElement);
       rssPostElement.classList.toggle('fw-bold', false);
       rssPostElement.classList.add('text-muted', 'fw-normal');
-      viewedLinks[link] = true;
-    });
-
-    btnContainer.append(btnElement);
-    rssPostsContainer.append(rssPostElement);
-
-    postContainer.append(rssPostsContainer);
-    postContainer.append(btnContainer);
-
-    container.prepend(postContainer);
+    }
   });
 };
 
-const updatePosts = (content) => {
-  console.log('CHECK!!!');
-  const { links } = content.data;
-  // console.log(links);
-  links.forEach(({ id, link }) => {
-    getRss(link)
-      .then((response) => parse(response.contents))
-      .then((data) => {
-        const { posts } = content.data;
-        const { infoItems } = data;
-
-        const newPosts = infoItems.map(({ title, link, description }) => ({
-          id,
-          title,
-          link,
-          description,
-        }));
-
-        const updatedPosts = _.differenceBy(newPosts, posts, 'title');
-        if (updatedPosts.length > 0) {
-          console.log(content);
-          content.data.posts = [...updatedPosts, ...posts];
-          renderPosts(content);
-        }
-      });
-  });
-
-  setTimeout(() => updatePosts(content), 5000);
+const handleError = (state, errorType) => {
+  state.signupProcess.processError = {
+    message: i18next.t(`submit.errors.${errorType}`),
+  };
+  state.signupProcess.processState = 'error';
 };
 
 export default () => {
-  i18next.init({
-    lng: 'ru',
-    debug: true,
-    resources,
-  });
+  i18next
+    .init({
+      lng: 'ru',
+      debug: true,
+      resources,
+    })
+    .then(() => {
+      const initialState = {
+        signupProcess: {
+          processState: 'added',
+          processError: null,
+        },
+        form: {
+          valid: true,
+          errors: null,
+          fields: {
+            link: '',
+          },
+          successFeedback: null,
+        },
+        data: {
+          feeds: [],
+          posts: [],
+          newPosts: [],
+          links: [],
+        },
+        previousUrls: {},
+        viewedLinks: {},
+      };
 
-  const urlContent = {
-    data: {
-      feeds: [],
-      posts: [],
-      links: [],
-    },
-  };
+      return initialState;
+    })
+    .then((initialState) => {
+      const elements = {
+        container: document.querySelector('.container'),
+        form: document.querySelector('form'),
+        fields: {
+          link: document.querySelector('input[aria-label="url"]'),
+        },
+        submitButton: document.querySelector('button[type="submit"]'),
+        feedbackElement: document.querySelector('.feedback'),
+        modalBody: document.querySelector('.modal-body'),
+      };
 
-  const elements = {
-    container: document.querySelector('.container'),
-    form: document.querySelector('form'),
-    fields: {
-      link: document.querySelector('input[aria-label="url"]'),
-    },
-    submitButton: document.querySelector('button[type="submit"]'),
-    feedbackElement: document.querySelector('.feedback'),
-    modalBody: document.querySelector('.modal-body'),
-  };
+      const state = onChange(initialState, render(elements, initialState));
+      addBtnModalPrevEventListener(state);
 
-  const initialState = {
-    signupProcess: {
-      processState: 'added',
-      processError: null,
-    },
-    form: {
-      valid: true,
-      errors: {},
-      fields: {
-        link: '',
-      },
-      successFeedback: null,
-    },
-  };
+      elements.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const linkFieldValue = elements.fields.link.value;
+        state.form.fields.link = linkFieldValue;
 
-  const state = onChange(initialState, render(elements, initialState));
-
-  elements.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const linkFieldValue = elements.fields.link.value;
-    state.form.fields.link = linkFieldValue;
-    validate(state.form.fields, previousUrls)
-      .then((errors) => {
-        state.form.errors = errors;
-        return errors;
-      })
-      .catch((err) => {
-        state.form.errors = err;
-        return err;
-      })
-      .then((errors) => {
-        if (Object.keys(errors).length > 0) {
-          state.signupProcess.processState = 'error';
-        } else {
+        validate(state.form.fields, state.previousUrls).then((error) => {
+          console.log(error);
+          if (error) {
+            state.form.errors = error;
+            if (error === i18next.t('submit.errors.rssExists')) {
+              handleError(state, 'rssExists');
+            } else {
+              handleError(state, 'wrongURL');
+            }
+            return;
+          }
+          // state.form.errors = null;
+          state.signupProcess.processState = 'sending';
           const nextLink = state.form.fields.link;
 
-          const nextIndex = Object.keys(previousUrls).length;
-          state.signupProcess.processState = 'sending';
+          const timeoutPromise = new Promise((__, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
 
-          getRss(nextLink)
+          Promise.race([getRss(nextLink), timeoutPromise])
             .then((response) => {
               state.signupProcess.processError = null;
               state.form.successFeedback = {
                 message: i18next.t('submit.success'),
               };
-              return parse(response.contents);
+              const content = parse(response.contents);
+              return content;
             })
             .then((content) => {
-              const { feeds, posts, links } = urlContent.data;
+              const { feeds, posts, links } = state.data;
               const { feedInfo, infoItems } = content;
-
-              const id = nextIndex;
-              urlContent.data.feeds = [{ id, ...feedInfo }, ...feeds];
-              console.log(urlContent.data.feeds);
+              const id = _.uniqueId();
+              state.data.feeds = [{ id, ...feedInfo }, ...feeds];
               const newPosts = infoItems.map(
                 ({ title, link, description }) => ({
                   id: _.uniqueId(),
@@ -226,35 +222,22 @@ export default () => {
                   description,
                 }),
               );
-              urlContent.data.posts = [...newPosts, ...posts];
-              urlContent.data.links = [{ id, link: nextLink }, ...links];
-              console.log(urlContent.data.links);
-              console.log(urlContent.data);
-
-              elements.fields.link.focus();
-              elements.fields.link.value = '';
-              previousUrls[nextIndex] = nextLink;
+              state.data.newPosts = newPosts;
+              state.data.posts = [...newPosts, ...posts];
+              state.data.links = [{ id, link: nextLink }, ...links];
+              state.previousUrls[id] = nextLink;
               state.signupProcess.processState = 'added';
-              // state.signupProcess.processError = null;
             })
-            .then(() => renderFeeds(urlContent))
-            .then(() => renderPosts(urlContent))
             .catch((err) => {
+              console.log(err.message);
               if (err.message === 'parsererror') {
-                console.log(state);
-                state.signupProcess.processError = {
-                  message: i18next.t('submit.errors.rssMissing'),
-                };
+                handleError(state, 'rssMissing');
               } else {
-                state.signupProcess.processError = {
-                  message: i18next.t('submit.errors.networkError'),
-                };
+                handleError(state, 'networkError');
               }
             });
-        }
+        });
       });
-  });
-
-  updatePosts(urlContent);
-  elements.fields.link.focus();
+      updatePosts(state);
+    });
 };
