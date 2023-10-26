@@ -1,4 +1,3 @@
-import has from 'lodash/has.js';
 import i18next from 'i18next';
 
 const handleProcessState = (elements, processState) => {
@@ -22,31 +21,6 @@ const handleProcessState = (elements, processState) => {
 
     default:
       throw new Error(`Unknown process state: ${processState}`);
-  }
-};
-
-const renderErrors = (elements, errors, prevError) => {
-  const [fieldName, fieldElement] = Object.entries(elements.fields)[0];
-  const { feedbackElement } = elements;
-  const error = errors[fieldName];
-  const fieldHadError = has(prevError, fieldName);
-  const fieldHasError = has(errors, fieldName);
-
-  if (!fieldHadError && !fieldHasError) {
-    return;
-  }
-
-  if (fieldHadError && !fieldHasError) {
-    fieldElement.classList.remove('is-invalid', 'is-valid');
-    feedbackElement.textContent = '';
-    return;
-  }
-
-  if (fieldHasError) {
-    fieldElement.classList.toggle('is-invalid', true);
-    feedbackElement.classList.toggle('text-success', false);
-    feedbackElement.classList.toggle('text-danger', true);
-    feedbackElement.textContent = error.message;
   }
 };
 
@@ -77,8 +51,8 @@ const renderProcessError = (elements, error, prevError) => {
 const renderSuccessFeedback = (elements, value, prevValue) => {
   const fieldElement = elements.fields.link;
   const { feedbackElement } = elements;
-  const fieldHadSuccess = prevValue !== null;
-  const fieldHasSuccess = value !== null;
+  const fieldHadSuccess = prevValue;
+  const fieldHasSuccess = value;
 
   if (!fieldHadSuccess && !fieldHasSuccess) {
     return;
@@ -94,7 +68,9 @@ const renderSuccessFeedback = (elements, value, prevValue) => {
     fieldElement.classList.toggle('is-valid', true);
     feedbackElement.classList.toggle('text-danger', false);
     feedbackElement.classList.toggle('text-success', true);
-    feedbackElement.textContent = value.message;
+    feedbackElement.textContent = {
+      message: i18next.t('submit.success'),
+    }.message;
   }
 };
 
@@ -118,44 +94,48 @@ const renderFeeds = (content) => {
 
 const renderPosts = (content) => {
   const container = document.querySelector('.mx-auto.posts');
-  Object.values(content.data.newPosts)
-    .reverse()
-    .forEach(({ title, link }) => {
-      const postContainer = document.createElement('div');
-      postContainer.classList.add('row', 'mb-3');
+  container.innerHTML = '';
+  Object.values(content.data.posts).forEach(({ title, link }) => {
+    const postContainer = document.createElement('div');
+    postContainer.classList.add('row', 'mb-3');
 
-      const rssPostsContainer = document.createElement('div');
-      rssPostsContainer.classList.add('col', 'posts');
-      const btnContainer = document.createElement('div');
-      btnContainer.classList.add('col-md-auto');
+    const rssPostsContainer = document.createElement('div');
+    rssPostsContainer.classList.add('col', 'posts');
+    const btnContainer = document.createElement('div');
+    btnContainer.classList.add('col-md-auto');
 
-      const rssPostElement = document.createElement('a');
-      rssPostElement.textContent = title;
-      rssPostElement.setAttribute('href', link);
-      rssPostElement.setAttribute('style', 'display: block;');
+    const rssPostElement = document.createElement('a');
+    rssPostElement.textContent = title;
+    rssPostElement.setAttribute('href', link);
+    rssPostElement.setAttribute('style', 'display: block;');
+
+    if (content.viewedLinks[link]) {
+      rssPostElement.classList.add('text-muted', 'fw-normal');
+    } else {
       rssPostElement.classList.add('fw-bold');
+    }
 
-      const btnElement = document.createElement('button');
-      btnElement.setAttribute('type', 'button');
-      btnElement.setAttribute('data-bs-toggle', 'modal');
-      btnElement.setAttribute('data-bs-target', '#modal');
-      btnElement.setAttribute('data-href', link);
-      btnElement.classList.add(
-        'btn',
-        'btn-outline-primary',
-        'btn-sm',
-        'add-post',
-      );
-      btnElement.textContent = i18next.t('view');
+    const btnElement = document.createElement('button');
+    btnElement.setAttribute('type', 'button');
+    btnElement.setAttribute('data-bs-toggle', 'modal');
+    btnElement.setAttribute('data-bs-target', '#modal');
+    btnElement.setAttribute('data-href', link);
+    btnElement.classList.add(
+      'btn',
+      'btn-outline-primary',
+      'btn-sm',
+      'add-post',
+    );
+    btnElement.textContent = i18next.t('view');
 
-      btnContainer.append(btnElement);
-      rssPostsContainer.append(rssPostElement);
+    btnContainer.append(btnElement);
+    rssPostsContainer.append(rssPostElement);
 
-      postContainer.append(rssPostsContainer);
-      postContainer.append(btnContainer);
+    postContainer.append(rssPostsContainer);
+    postContainer.append(btnContainer);
 
-      container.prepend(postContainer);
-    });
+    container.appendChild(postContainer);
+  });
 };
 
 export default (elements, initialState) => (path, value, prevValue) => {
@@ -168,7 +148,7 @@ export default (elements, initialState) => (path, value, prevValue) => {
       renderSuccessFeedback(elements, value);
       break;
 
-    case 'signupProcess.processError':
+    case 'form.errors':
       elements.submitButton.disabled = false;
       elements.fields.link.disabled = false;
       renderProcessError(elements, value, prevValue, initialState);
@@ -176,10 +156,7 @@ export default (elements, initialState) => (path, value, prevValue) => {
 
     case 'form.valid':
       elements.submitButton.disabled = !value;
-      break;
-
-    case 'form.errors':
-      renderErrors(elements, value, prevValue, initialState);
+      renderSuccessFeedback(elements);
       break;
 
     case 'data.feeds':

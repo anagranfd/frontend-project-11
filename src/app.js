@@ -1,5 +1,6 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import onChange from 'on-change';
+import * as yup from 'yup';
 import axios from 'axios';
 import i18next from 'i18next';
 import _ from 'lodash';
@@ -20,41 +21,19 @@ const getRss = (url) => axios
   .then((res) => res.data)
   .catch((e) => Promise.reject(e));
 
-// const updatePosts = (state) => {
-//   const { links } = state.data;
-//   const promises = links.map(({ id, link }) =>
-//     getRss(link)
-//       .then((response) => parse(response.contents))
-//       .then((data) => {
-//         const { posts } = state.data;
-//         const { infoItems } = data;
-//         const newPosts = infoItems.map(({ title, link, description }) => ({
-//           id,
-//           title,
-//           link,
-//           description,
-//         }));
-//         const updatedPosts = _.differenceBy(newPosts, posts, 'title');
-//         if (updatedPosts.length > 0) {
-//           state.data.posts = [...updatedPosts, ...posts];
-//         }
-//       })
-//   );
-
-//   Promise.all(promises).finally(() => {
-//     setTimeout(() => updatePosts(state), 5000);
-//   });
-// };
-
 const updatePosts = (state) => {
-  const { links } = state.data;
+  const { feeds } = state.data;
 
-  const promises = links.map(({ link }) => {
+  const promises = feeds.map(({ url }) => {
     const timeoutPromise = new Promise((__, reject) => setTimeout(() => reject(new Error('Timeout occurred')), 5000));
-    Promise.race([getRss(link), timeoutPromise])
+    Promise.race([getRss(url), timeoutPromise])
       .then((response) => {
+        if (response.contents.startsWith('<!DOCTYPE html>')) {
+          return Promise.reject(
+            new Error('Received HTML instead of XML. Possibly an error page.'),
+          );
+        }
         const content = parse(response.contents);
-
         const { posts } = state.data;
         const { infoItems } = content;
 
@@ -68,7 +47,6 @@ const updatePosts = (state) => {
         const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
 
         if (uniqueNewPosts.length > 0) {
-          state.data.newPosts = uniqueNewPosts;
           state.data.posts = [...uniqueNewPosts, ...posts];
         }
         return Promise.resolve();
@@ -90,6 +68,10 @@ const updatePosts = (state) => {
 const addBtnModalPrevEventListener = (state) => {
   const postsContainer = document.querySelector('.mx-auto.posts');
 
+  const modalTitle = document.querySelector('.modal-title');
+  const modalDescription = document.querySelector('.modal-body');
+  modalDescription.innerHTML = '';
+
   postsContainer.addEventListener('click', (e) => {
     const { target } = e;
 
@@ -101,22 +83,18 @@ const addBtnModalPrevEventListener = (state) => {
 
       const rssPostElement = document.querySelector(`a[href="${hrefLink}"]`);
 
-      const modalBody = document.querySelector('.modal-body');
-      console.log(modalBody);
-      modalBody.innerHTML = '';
-      const modalTitle = document.querySelector('.modal-title');
       modalTitle.textContent = title;
-      const modalDescription = document.createElement('div');
-      modalDescription.innerHTML = description;
-      modalBody.append(modalDescription);
+      modalDescription.innerHTML = `<div>${description}</div>`;
 
       const followLinkBtn = document.querySelector('.to-website');
-      followLinkBtn.addEventListener('click', () => {
+
+      const followLinkHandler = () => {
         window.location.href = hrefLink;
-      });
+      };
+      followLinkBtn.removeEventListener('click', followLinkHandler);
+      followLinkBtn.addEventListener('click', followLinkHandler);
 
       state.viewedLinks[hrefLink] = true;
-      console.log(rssPostElement);
       rssPostElement.classList.toggle('fw-bold', false);
       rssPostElement.classList.add('text-muted', 'fw-normal');
     }
@@ -124,7 +102,7 @@ const addBtnModalPrevEventListener = (state) => {
 };
 
 const handleError = (state, errorType) => {
-  state.signupProcess.processError = {
+  state.form.errors = {
     message: i18next.t(`submit.errors.${errorType}`),
   };
   state.signupProcess.processState = 'error';
@@ -138,10 +116,21 @@ export default () => {
       resources,
     })
     .then(() => {
+      yup.setLocale({
+        mixed: {
+          required: () => i18next.t('submit.errors.emptyInputState'),
+          url: () => i18next.t('submit.errors.wrongURL'),
+        },
+        string: {
+          url: () => i18next.t('submit.errors.wrongURL'),
+          notOneOf: () => i18next.t('submit.errors.rssExists'),
+        },
+      });
+    })
+    .then(() => {
       const initialState = {
         signupProcess: {
           processState: 'added',
-          processError: null,
         },
         form: {
           valid: true,
@@ -154,16 +143,10 @@ export default () => {
         data: {
           feeds: [],
           posts: [],
-          newPosts: [],
-          links: [],
         },
-        previousUrls: {},
         viewedLinks: {},
       };
 
-      return initialState;
-    })
-    .then((initialState) => {
       const elements = {
         container: document.querySelector('.container'),
         form: document.querySelector('form'),
@@ -180,21 +163,23 @@ export default () => {
 
       elements.form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const linkFieldValue = elements.fields.link.value;
-        state.form.fields.link = linkFieldValue;
+        const formData = new FormData(e.target);
+        const url = formData.get('url');
+        state.form.fields.link = url;
 
-        validate(state.form.fields, state.previousUrls).then((error) => {
+        const alreadyExists = state.data.feeds.some((feed) => feed.url === url);
+        if (alreadyExists) {
+          handleError(state, 'rssExists');
+          return;
+        }
+
+        validate(state.form.fields).then((error) => {
           console.log(error);
           if (error) {
             state.form.errors = error;
-            if (error === i18next.t('submit.errors.rssExists')) {
-              handleError(state, 'rssExists');
-            } else {
-              handleError(state, 'wrongURL');
-            }
+            handleError(state, 'wrongURL');
             return;
           }
-          // state.form.errors = null;
           state.signupProcess.processState = 'sending';
           const nextLink = state.form.fields.link;
 
@@ -202,7 +187,7 @@ export default () => {
 
           Promise.race([getRss(nextLink), timeoutPromise])
             .then((response) => {
-              state.signupProcess.processError = null;
+              state.form.errors = null;
               state.form.successFeedback = {
                 message: i18next.t('submit.success'),
               };
@@ -210,10 +195,10 @@ export default () => {
               return content;
             })
             .then((content) => {
-              const { feeds, posts, links } = state.data;
+              const { feeds, posts } = state.data;
               const { feedInfo, infoItems } = content;
               const id = _.uniqueId();
-              state.data.feeds = [{ id, ...feedInfo }, ...feeds];
+              state.data.feeds = [{ id, url: nextLink, ...feedInfo }, ...feeds];
               const newPosts = infoItems.map(
                 ({ title, link, description }) => ({
                   id: _.uniqueId(),
@@ -222,10 +207,7 @@ export default () => {
                   description,
                 }),
               );
-              state.data.newPosts = newPosts;
               state.data.posts = [...newPosts, ...posts];
-              state.data.links = [{ id, link: nextLink }, ...links];
-              state.previousUrls[id] = nextLink;
               state.signupProcess.processState = 'added';
             })
             .catch((err) => {
