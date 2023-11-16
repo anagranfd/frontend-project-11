@@ -15,7 +15,22 @@ const getProxyUrl = (url) => {
   return urlWithProxy.toString();
 };
 
-const getRss = (url) => axios.get(getProxyUrl(url)).then((res) => res.data);
+// const getRss = (url) => axios.get(getProxyUrl(url)).then((res) => res.data);
+
+const handleError = (state, errorType) => {
+  state.form.valid = false;
+  state.form.errors = {
+    message: i18next.t(`submit.errors.${errorType}`),
+  };
+  state.signupProcess.processState = 'error';
+};
+
+const getRss = (url) => axios
+  .get(getProxyUrl(url))
+  .then((res) => res.data)
+  .catch(() => {
+    handleError(state, 'networkError');
+  });
 
 const updatePosts = (state) => {
   const { feeds } = state.data;
@@ -65,14 +80,6 @@ const addBtnModalPrevEventListener = (state) => {
       state.selectedPost = selectedPost;
     }
   });
-};
-
-const handleError = (state, errorType) => {
-  state.form.valid = false;
-  state.form.errors = {
-    message: i18next.t(`submit.errors.${errorType}`),
-  };
-  state.signupProcess.processState = 'error';
 };
 
 export default () => {
@@ -157,13 +164,8 @@ export default () => {
               state.data.posts = [...newPosts, ...posts];
               state.signupProcess.processState = 'added';
             })
-            .catch((err) => {
-              console.log(err.message);
-              if (err.message === 'parsererror') {
-                handleError(state, 'rssMissing');
-              } else {
-                handleError(state, 'networkError');
-              }
+            .catch(() => {
+              handleError(state, 'rssMissing');
             });
         });
       });
