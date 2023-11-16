@@ -15,6 +15,8 @@ const getProxyUrl = (url) => {
   return urlWithProxy.toString();
 };
 
+const timeout = 5000;
+
 // const getRss = (url) => axios.get(getProxyUrl(url)).then((res) => res.data);
 
 const handleError = (state, errorType) => {
@@ -25,16 +27,10 @@ const handleError = (state, errorType) => {
   state.signupProcess.processState = 'error';
 };
 
-const getRss = (url) => axios
-  .get(getProxyUrl(url))
-  .then((res) => res.data)
-  .catch(() => {
-    handleError(state, 'networkError');
-  });
+const getRss = (url) => axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
 
 const updatePosts = (state) => {
   const { feeds } = state.data;
-  const timeout = 5000;
 
   const promises = feeds.map(({ url }) => getRss(url)
     .then((response) => {
@@ -164,8 +160,13 @@ export default () => {
               state.data.posts = [...newPosts, ...posts];
               state.signupProcess.processState = 'added';
             })
-            .catch(() => {
-              handleError(state, 'rssMissing');
+            .catch((error) => {
+              // handleError(state, 'rssMissing');
+              if (error.code === 'ECONNABORTED' || error.response) {
+                handleError(state, 'networkError');
+              } else {
+                handleError(state, 'rssMissing');
+              }
             });
         });
       });
