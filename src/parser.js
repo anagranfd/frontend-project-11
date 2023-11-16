@@ -4,7 +4,9 @@ export default (data) => {
 
   const parseError = dom.querySelector('parsererror');
   if (parseError) {
-    throw new Error('parsererror');
+    const error = new Error(parseError.textContent);
+    error.isParseError = true;
+    throw error;
   }
 
   const channel = dom.querySelector('channel');

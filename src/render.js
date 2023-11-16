@@ -74,6 +74,26 @@ const renderSuccessFeedback = (elements, value, prevValue) => {
   }
 };
 
+const renderSelectedPost = (elements, value) => {
+  const { modalBody } = elements;
+  const modalTitle = document.querySelector('.modal-title');
+  modalBody.innerHTML = '';
+
+  const { title, description, link } = value;
+
+  modalTitle.textContent = title;
+  modalBody.innerHTML = `<div>${description}</div>`;
+
+  const followLinkBtn = document.querySelector('.to-website');
+
+  const followLinkHandler = () => {
+    window.location.href = link;
+  };
+
+  followLinkBtn.removeEventListener('click', followLinkHandler);
+  followLinkBtn.addEventListener('click', followLinkHandler);
+};
+
 const renderFeeds = (content) => {
   const container = document.querySelector('.feeds');
   const rssTitleContainer = document.createElement('div');
@@ -88,13 +108,13 @@ const renderFeeds = (content) => {
     },
   );
 
-  container.innerHTML = '';
+  container.textContent = '';
   container.append(rssTitleContainer);
 };
 
 const renderPosts = (content) => {
   const container = document.querySelector('.mx-auto.posts');
-  container.innerHTML = '';
+  container.textContent = '';
   Object.values(content.data.posts).forEach(({ title, link }) => {
     const postContainer = document.createElement('div');
     postContainer.classList.add('row', 'mb-3');
@@ -156,7 +176,7 @@ export default (elements, initialState) => (path, value, prevValue) => {
 
     case 'form.valid':
       elements.submitButton.disabled = !value;
-      renderSuccessFeedback(elements);
+      renderSuccessFeedback(elements, value);
       break;
 
     case 'data.feeds':
@@ -165,6 +185,11 @@ export default (elements, initialState) => (path, value, prevValue) => {
 
     case 'data.posts':
       renderPosts(initialState);
+      break;
+
+    case 'selectedPost':
+      renderPosts(initialState);
+      renderSelectedPost(elements, value);
       break;
 
     default:
