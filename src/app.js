@@ -23,7 +23,11 @@ const handleError = (state, error) => {
 
   if (typeof error === 'string') {
     errorMessage = i18next.t(`submit.errors.${error}`);
-  } else if (error.code === 'ECONNABORTED' || error.response) {
+  } else if (
+    error.code === 'ECONNABORTED'
+    || error.code === 'ERR_NETWORK'
+    || error.response
+  ) {
     errorMessage = i18next.t('submit.errors.networkError');
   } else {
     errorMessage = i18next.t('submit.errors.rssMissing');
