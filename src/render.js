@@ -110,15 +110,19 @@ const renderPosts = (content) => {
     postContainer.classList.add('row', 'mb-3');
 
     const rssPostsContainer = document.createElement('div');
-    rssPostsContainer.classList.add('col', 'posts');
-    const btnContainer = document.createElement('div');
-    btnContainer.classList.add('col-md-auto');
+    rssPostsContainer.classList.add(
+      'col',
+      'posts',
+      'd-flex',
+      'justify-content-between',
+      'align-items-center',
+    );
 
     const rssPostElement = document.createElement('a');
     rssPostElement.textContent = title;
     rssPostElement.setAttribute('href', link);
     rssPostElement.setAttribute('target', '_blank');
-    rssPostElement.setAttribute('style', 'display: block;');
+    rssPostElement.classList.add('flex-grow-1', 'me-2');
 
     if (content.viewedLinks.includes(id)) {
       rssPostElement.classList.add('text-muted', 'fw-normal');
@@ -137,14 +141,13 @@ const renderPosts = (content) => {
       'btn-sm',
       'add-post',
     );
+
     btnElement.textContent = i18next.t('view');
 
-    btnContainer.append(btnElement);
     rssPostsContainer.append(rssPostElement);
+    rssPostsContainer.append(btnElement);
 
     postContainer.append(rssPostsContainer);
-    postContainer.append(btnContainer);
-
     container.appendChild(postContainer);
   });
 };
