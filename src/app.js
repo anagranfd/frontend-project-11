@@ -17,14 +17,20 @@ const getProxyUrl = (url) => {
 
 const timeout = 5000;
 
-// const getRss = (url) => axios.get(getProxyUrl(url)).then((res) => res.data);
-
-const handleError = (state, errorType) => {
+const handleError = (state, error) => {
   state.form.valid = false;
-  state.form.errors = {
-    message: i18next.t(`submit.errors.${errorType}`),
-  };
-  state.signupProcess.processState = 'error';
+  let errorMessage;
+
+  if (typeof error === 'string') {
+    errorMessage = i18next.t(`submit.errors.${error}`);
+  } else if (error.code === 'ECONNABORTED' || error.response) {
+    errorMessage = i18next.t('submit.errors.networkError');
+  } else {
+    errorMessage = i18next.t('submit.errors.rssMissing');
+  }
+
+  state.form.errors = { message: errorMessage };
+  state.loadingProcess = 'error';
 };
 
 const getRss = (url) => axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
@@ -50,31 +56,13 @@ const updatePosts = (state) => {
       if (uniqueNewPosts.length > 0) {
         state.data.posts = [...uniqueNewPosts, ...posts];
       }
-      return Promise.resolve();
     })
     .catch((error) => {
       console.error('An error occurred:', error);
     }));
 
-  Promise.all(promises).then(() => {
+  Promise.all(promises).finally(() => {
     setTimeout(() => updatePosts(state), timeout);
-  });
-};
-
-const addBtnModalPrevEventListener = (state) => {
-  const postsContainer = document.querySelector('.mx-auto.posts');
-
-  postsContainer.addEventListener('click', (e) => {
-    const { target } = e;
-
-    if (target.classList.contains('add-post')) {
-      const hrefLink = target.dataset.href;
-      const selectedPost = state.data.posts.find(
-        ({ link }) => link === hrefLink,
-      );
-      state.viewedLinks[hrefLink] = true;
-      state.selectedPost = selectedPost;
-    }
   });
 };
 
@@ -97,18 +85,16 @@ export default () => {
     })
     .then(() => {
       const initialState = {
-        signupProcess: {
-          processState: 'added',
-        },
+        loadingProcess: null,
         form: {
-          valid: null,
+          valid: true,
           errors: null,
         },
         data: {
           feeds: [],
           posts: [],
         },
-        viewedLinks: {},
+        viewedLinks: [],
         selectedPost: null,
       };
 
@@ -121,10 +107,36 @@ export default () => {
         submitButton: document.querySelector('button[type="submit"]'),
         feedbackElement: document.querySelector('.feedback'),
         modalBody: document.querySelector('.modal-body'),
+        modalTitle: document.querySelector('.modal-title'),
+        followLinkBtn: document.querySelector('.to-website'),
+        postsContainer: document.querySelector('.mx-auto.posts'),
       };
 
       const state = onChange(initialState, render(elements, initialState));
-      addBtnModalPrevEventListener(state);
+      elements.postsContainer.addEventListener('click', (e) => {
+        const { target } = e;
+        const hrefLink = target.tagName === 'A'
+          ? target.getAttribute('href')
+          : target.dataset.href;
+
+        const selectedPost = state.data.posts.find(
+          ({ link }) => link === hrefLink,
+        );
+
+        if (selectedPost) {
+          const { id } = selectedPost;
+
+          if (!state.viewedLinks.includes(id)) {
+            state.viewedLinks.push(id);
+
+            elements.followLinkBtn.addEventListener('click', () => {
+              window.open(hrefLink, '_blank');
+            });
+
+            state.selectedPost = selectedPost;
+          }
+        }
+      });
 
       elements.form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -132,13 +144,12 @@ export default () => {
         const url = formData.get('url');
 
         const links = state.data.feeds.map((feed) => feed.url);
-        validate({ link: url }, links).then((errorType) => {
-          if (errorType) {
-            state.form.errors = errorType;
-            handleError(state, errorType);
+        validate({ link: url }, links).then((error) => {
+          if (error) {
+            handleError(state, error);
             return;
           }
-          state.signupProcess.processState = 'sending';
+          state.loadingProcess = 'sending';
 
           getRss(url)
             .then((response) => {
@@ -158,15 +169,10 @@ export default () => {
                 }),
               );
               state.data.posts = [...newPosts, ...posts];
-              state.signupProcess.processState = 'added';
+              state.loadingProcess = 'added';
             })
-            .catch((error) => {
-              // handleError(state, 'rssMissing');
-              if (error.code === 'ECONNABORTED' || error.response) {
-                handleError(state, 'networkError');
-              } else {
-                handleError(state, 'rssMissing');
-              }
+            .catch((err) => {
+              handleError(state, err);
             });
         });
       });

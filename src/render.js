@@ -75,23 +75,13 @@ const renderSuccessFeedback = (elements, value, prevValue) => {
 };
 
 const renderSelectedPost = (elements, value) => {
-  const { modalBody } = elements;
-  const modalTitle = document.querySelector('.modal-title');
-  modalBody.innerHTML = '';
+  const { modalBody, modalTitle } = elements;
+  const { title, description } = value;
 
-  const { title, description, link } = value;
+  modalBody.innerHTML = '';
+  modalBody.textContent = description;
 
   modalTitle.textContent = title;
-  modalBody.innerHTML = `<div>${description}</div>`;
-
-  const followLinkBtn = document.querySelector('.to-website');
-
-  const followLinkHandler = () => {
-    window.location.href = link;
-  };
-
-  followLinkBtn.removeEventListener('click', followLinkHandler);
-  followLinkBtn.addEventListener('click', followLinkHandler);
 };
 
 const renderFeeds = (content) => {
@@ -115,7 +105,7 @@ const renderFeeds = (content) => {
 const renderPosts = (content) => {
   const container = document.querySelector('.mx-auto.posts');
   container.textContent = '';
-  Object.values(content.data.posts).forEach(({ title, link }) => {
+  Object.values(content.data.posts).forEach(({ id, title, link }) => {
     const postContainer = document.createElement('div');
     postContainer.classList.add('row', 'mb-3');
 
@@ -127,9 +117,10 @@ const renderPosts = (content) => {
     const rssPostElement = document.createElement('a');
     rssPostElement.textContent = title;
     rssPostElement.setAttribute('href', link);
+    rssPostElement.setAttribute('target', '_blank');
     rssPostElement.setAttribute('style', 'display: block;');
 
-    if (content.viewedLinks[link]) {
+    if (content.viewedLinks.includes(id)) {
       rssPostElement.classList.add('text-muted', 'fw-normal');
     } else {
       rssPostElement.classList.add('fw-bold');
@@ -160,12 +151,9 @@ const renderPosts = (content) => {
 
 export default (elements, initialState) => (path, value, prevValue) => {
   switch (path) {
-    case 'signupProcess.processState':
+    case 'loadingProcess':
       handleProcessState(elements, value);
-      break;
-
-    case 'form.successFeedback':
-      renderSuccessFeedback(elements, value);
+      if (value === 'added') renderSuccessFeedback(elements, value);
       break;
 
     case 'form.errors':
@@ -176,7 +164,6 @@ export default (elements, initialState) => (path, value, prevValue) => {
 
     case 'form.valid':
       elements.submitButton.disabled = !value;
-      renderSuccessFeedback(elements, value);
       break;
 
     case 'data.feeds':
