@@ -122,7 +122,6 @@ const renderPosts = (content) => {
     rssPostElement.textContent = title;
     rssPostElement.setAttribute('href', link);
     rssPostElement.setAttribute('target', '_blank');
-    rssPostElement.classList.add('flex-grow-1', 'me-2');
 
     if (content.viewedLinks.includes(id)) {
       rssPostElement.classList.add('text-muted', 'fw-normal');
