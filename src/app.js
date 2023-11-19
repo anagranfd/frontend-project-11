@@ -18,21 +18,17 @@ const getProxyUrl = (url) => {
 const timeout = 5000;
 
 const handleError = (error) => {
-  let errorMessage;
-
   if (typeof error === 'string') {
-    errorMessage = i18next.t(`submit.errors.${error}`);
-  } else if (
+    return i18next.t(`submit.errors.${error}`);
+  }
+  if (
     error.code === 'ECONNABORTED'
     || error.code === 'ERR_NETWORK'
     || error.response
   ) {
-    errorMessage = i18next.t('submit.errors.networkError');
-  } else {
-    errorMessage = i18next.t('submit.errors.rssMissing');
+    return i18next.t('submit.errors.networkError');
   }
-
-  return errorMessage;
+  return i18next.t('submit.errors.rssMissing');
 };
 
 const getRss = (url) => axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
@@ -130,8 +126,9 @@ export default () => {
 
           if (!state.viewedLinks.includes(id)) {
             state.viewedLinks.push(id);
-            state.selectedPost = selectedPost;
           }
+
+          state.selectedPost = selectedPost;
         }
       });
 
