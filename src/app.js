@@ -17,53 +17,54 @@ const getProxyUrl = (url) => {
 
 const timeout = 5000;
 
-const handleError = (state, error) => {
-  state.form.valid = false;
+const handleError = (error) => {
   let errorMessage;
 
   if (typeof error === 'string') {
     errorMessage = i18next.t(`submit.errors.${error}`);
   } else if (
-    error.code === 'ECONNABORTED'
-    || error.code === 'ERR_NETWORK'
-    || error.response
+    error.code === 'ECONNABORTED' ||
+    error.code === 'ERR_NETWORK' ||
+    error.response
   ) {
     errorMessage = i18next.t('submit.errors.networkError');
   } else {
     errorMessage = i18next.t('submit.errors.rssMissing');
   }
 
-  state.form.errors = { message: errorMessage };
-  state.loadingProcess = 'error';
+  return errorMessage;
 };
 
-const getRss = (url) => axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
+const getRss = (url) =>
+  axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
 
 const updatePosts = (state) => {
   const { feeds } = state.data;
 
-  const promises = feeds.map(({ url }) => getRss(url)
-    .then((response) => {
-      const content = parse(response.contents);
-      const { posts } = state.data;
-      const { infoItems } = content;
+  const promises = feeds.map(({ url }) =>
+    getRss(url)
+      .then((response) => {
+        const content = parse(response.contents);
+        const { posts } = state.data;
+        const { infoItems } = content;
 
-      const newPosts = infoItems.map(({ title, link, description }) => ({
-        id: _.uniqueId(),
-        title,
-        link,
-        description,
-      }));
+        const newPosts = infoItems.map(({ title, link, description }) => ({
+          id: _.uniqueId(),
+          title,
+          link,
+          description,
+        }));
 
-      const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
+        const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
 
-      if (uniqueNewPosts.length > 0) {
-        state.data.posts = [...uniqueNewPosts, ...posts];
-      }
-    })
-    .catch((error) => {
-      console.error('An error occurred:', error);
-    }));
+        if (uniqueNewPosts.length > 0) {
+          state.data.posts = [...uniqueNewPosts, ...posts];
+        }
+      })
+      .catch((error) => {
+        console.error('An error occurred:', error);
+      })
+  );
 
   Promise.all(promises).finally(() => {
     setTimeout(() => updatePosts(state), timeout);
@@ -89,7 +90,7 @@ export default () => {
     })
     .then(() => {
       const initialState = {
-        loadingProcess: null,
+        loadingProcess: 'success',
         form: {
           valid: true,
           errors: null,
@@ -119,12 +120,13 @@ export default () => {
       const state = onChange(initialState, render(elements, initialState));
       elements.postsContainer.addEventListener('click', (e) => {
         const { target } = e;
-        const hrefLink = target.tagName === 'A'
-          ? target.getAttribute('href')
-          : target.dataset.href;
+        const hrefLink =
+          target.tagName === 'A'
+            ? target.getAttribute('href')
+            : target.dataset.href;
 
         const selectedPost = state.data.posts.find(
-          ({ link }) => link === hrefLink,
+          ({ link }) => link === hrefLink
         );
 
         if (selectedPost) {
@@ -132,11 +134,6 @@ export default () => {
 
           if (!state.viewedLinks.includes(id)) {
             state.viewedLinks.push(id);
-
-            elements.followLinkBtn.addEventListener('click', () => {
-              window.open(hrefLink, '_blank');
-            });
-
             state.selectedPost = selectedPost;
           }
         }
@@ -150,15 +147,21 @@ export default () => {
         const links = state.data.feeds.map((feed) => feed.url);
         validate({ link: url }, links).then((error) => {
           if (error) {
-            handleError(state, error);
+            state.form = {
+              valid: false,
+              errors: handleError(error),
+            };
+            state.loadingProcess = 'error';
             return;
           }
           state.loadingProcess = 'sending';
 
           getRss(url)
             .then((response) => {
-              state.form.errors = null;
-              state.form.valid = true;
+              state.form = {
+                valid: true,
+                errors: null,
+              };
               const content = parse(response.contents);
               const { feeds, posts } = state.data;
               const { feedInfo, infoItems } = content;
@@ -170,13 +173,17 @@ export default () => {
                   title,
                   link,
                   description,
-                }),
+                })
               );
               state.data.posts = [...newPosts, ...posts];
-              state.loadingProcess = 'added';
+              state.loadingProcess = 'success';
             })
             .catch((err) => {
-              handleError(state, err);
+              state.form = {
+                valid: false,
+                errors: handleError(err),
+              };
+              state.loadingProcess = 'error';
             });
         });
       });

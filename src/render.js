@@ -1,8 +1,8 @@
 import i18next from 'i18next';
 
-const handleProcessState = (elements, processState) => {
-  switch (processState) {
-    case 'added':
+const handleProcessState = (elements, loadingProcess) => {
+  switch (loadingProcess) {
+    case 'success':
       elements.submitButton.disabled = false;
       elements.fields.link.disabled = false;
       elements.fields.link.value = '';
@@ -20,68 +20,40 @@ const handleProcessState = (elements, processState) => {
       break;
 
     default:
-      throw new Error(`Unknown process state: ${processState}`);
+      throw new Error(`Unknown process state: ${loadingProcess}`);
   }
 };
 
-const renderProcessError = (elements, error, prevError) => {
+const renderProcessError = (elements, error) => {
   const fieldElement = elements.fields.link;
   const { feedbackElement } = elements;
-  const fieldHadError = prevError !== null;
-  const fieldHasError = error !== null;
 
-  if (!fieldHadError && !fieldHasError) {
-    return;
-  }
-
-  if (fieldHadError && !fieldHasError) {
-    fieldElement.classList.remove('is-invalid', 'is-valid');
-    feedbackElement.textContent = '';
-    return;
-  }
-
-  if (fieldHasError) {
-    fieldElement.classList.toggle('is-invalid', true);
-    feedbackElement.classList.toggle('text-success', false);
-    feedbackElement.classList.toggle('text-danger', true);
-    feedbackElement.textContent = error.message;
-  }
-};
-
-const renderSuccessFeedback = (elements, value, prevValue) => {
-  const fieldElement = elements.fields.link;
-  const { feedbackElement } = elements;
-  const fieldHadSuccess = prevValue;
-  const fieldHasSuccess = value;
-
-  if (!fieldHadSuccess && !fieldHasSuccess) {
-    return;
-  }
-
-  if (fieldHadSuccess && !fieldHasSuccess) {
-    fieldElement.classList.remove('is-invalid', 'is-valid');
-    feedbackElement.textContent = '';
-    return;
-  }
-
-  if (fieldHasSuccess) {
-    fieldElement.classList.toggle('is-valid', true);
-    feedbackElement.classList.toggle('text-danger', false);
-    feedbackElement.classList.toggle('text-success', true);
-    feedbackElement.textContent = {
-      message: i18next.t('submit.success'),
-    }.message;
+  if (!error) {
+    fieldElement.classList.remove('is-invalid');
+    fieldElement.classList.add('is-valid');
+    feedbackElement.textContent = i18next.t('submit.success');
+    feedbackElement.classList.remove('text-danger');
+    feedbackElement.classList.add('text-success');
+  } else {
+    fieldElement.classList.remove('is-valid');
+    fieldElement.classList.add('is-invalid');
+    feedbackElement.textContent = error;
+    feedbackElement.classList.remove('text-success');
+    feedbackElement.classList.add('text-danger');
   }
 };
 
 const renderSelectedPost = (elements, value) => {
-  const { modalBody, modalTitle } = elements;
-  const { title, description } = value;
+  const { modalBody, modalTitle, followLinkBtn } = elements;
+  const { title, description, link } = value;
 
-  modalBody.innerHTML = '';
+  modalBody.textContent = '';
   modalBody.textContent = description;
 
   modalTitle.textContent = title;
+
+  followLinkBtn.href = link;
+  followLinkBtn.target = '_blank';
 };
 
 const renderFeeds = (content) => {
@@ -95,7 +67,7 @@ const renderFeeds = (content) => {
       const rssDescElement = document.createElement('p');
       rssDescElement.textContent = feedDescription;
       rssTitleContainer.append(rssTitleElement, rssDescElement);
-    },
+    }
   );
 
   container.textContent = '';
@@ -115,7 +87,7 @@ const renderPosts = (content) => {
       'posts',
       'd-flex',
       'justify-content-between',
-      'align-items-center',
+      'align-items-center'
     );
 
     const rssPostElement = document.createElement('a');
@@ -138,7 +110,7 @@ const renderPosts = (content) => {
       'btn',
       'btn-outline-primary',
       'btn-sm',
-      'add-post',
+      'add-post'
     );
 
     btnElement.textContent = i18next.t('view');
@@ -151,21 +123,16 @@ const renderPosts = (content) => {
   });
 };
 
-export default (elements, initialState) => (path, value, prevValue) => {
+export default (elements, initialState) => (path, value) => {
   switch (path) {
     case 'loadingProcess':
       handleProcessState(elements, value);
-      if (value === 'added') renderSuccessFeedback(elements, value);
       break;
 
-    case 'form.errors':
+    case 'form':
       elements.submitButton.disabled = false;
       elements.fields.link.disabled = false;
-      renderProcessError(elements, value, prevValue, initialState);
-      break;
-
-    case 'form.valid':
-      elements.submitButton.disabled = !value;
+      renderProcessError(elements, initialState.form.errors);
       break;
 
     case 'data.feeds':
