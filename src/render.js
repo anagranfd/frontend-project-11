@@ -67,7 +67,7 @@ const renderFeeds = (content) => {
       const rssDescElement = document.createElement('p');
       rssDescElement.textContent = feedDescription;
       rssTitleContainer.append(rssTitleElement, rssDescElement);
-    }
+    },
   );
 
   container.textContent = '';
@@ -87,7 +87,7 @@ const renderPosts = (content) => {
       'posts',
       'd-flex',
       'justify-content-between',
-      'align-items-center'
+      'align-items-center',
     );
 
     const rssPostElement = document.createElement('a');
@@ -110,7 +110,7 @@ const renderPosts = (content) => {
       'btn',
       'btn-outline-primary',
       'btn-sm',
-      'add-post'
+      'add-post',
     );
 
     btnElement.textContent = i18next.t('view');

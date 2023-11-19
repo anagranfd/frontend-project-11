@@ -23,9 +23,9 @@ const handleError = (error) => {
   if (typeof error === 'string') {
     errorMessage = i18next.t(`submit.errors.${error}`);
   } else if (
-    error.code === 'ECONNABORTED' ||
-    error.code === 'ERR_NETWORK' ||
-    error.response
+    error.code === 'ECONNABORTED'
+    || error.code === 'ERR_NETWORK'
+    || error.response
   ) {
     errorMessage = i18next.t('submit.errors.networkError');
   } else {
@@ -35,36 +35,33 @@ const handleError = (error) => {
   return errorMessage;
 };
 
-const getRss = (url) =>
-  axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
+const getRss = (url) => axios.get(getProxyUrl(url), { timeout }).then((res) => res.data);
 
 const updatePosts = (state) => {
   const { feeds } = state.data;
 
-  const promises = feeds.map(({ url }) =>
-    getRss(url)
-      .then((response) => {
-        const content = parse(response.contents);
-        const { posts } = state.data;
-        const { infoItems } = content;
+  const promises = feeds.map(({ url }) => getRss(url)
+    .then((response) => {
+      const content = parse(response.contents);
+      const { posts } = state.data;
+      const { infoItems } = content;
 
-        const newPosts = infoItems.map(({ title, link, description }) => ({
-          id: _.uniqueId(),
-          title,
-          link,
-          description,
-        }));
+      const newPosts = infoItems.map(({ title, link, description }) => ({
+        id: _.uniqueId(),
+        title,
+        link,
+        description,
+      }));
 
-        const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
+      const uniqueNewPosts = _.differenceBy(newPosts, posts, 'link');
 
-        if (uniqueNewPosts.length > 0) {
-          state.data.posts = [...uniqueNewPosts, ...posts];
-        }
-      })
-      .catch((error) => {
-        console.error('An error occurred:', error);
-      })
-  );
+      if (uniqueNewPosts.length > 0) {
+        state.data.posts = [...uniqueNewPosts, ...posts];
+      }
+    })
+    .catch((error) => {
+      console.error('An error occurred:', error);
+    }));
 
   Promise.all(promises).finally(() => {
     setTimeout(() => updatePosts(state), timeout);
@@ -120,13 +117,12 @@ export default () => {
       const state = onChange(initialState, render(elements, initialState));
       elements.postsContainer.addEventListener('click', (e) => {
         const { target } = e;
-        const hrefLink =
-          target.tagName === 'A'
-            ? target.getAttribute('href')
-            : target.dataset.href;
+        const hrefLink = target.tagName === 'A'
+          ? target.getAttribute('href')
+          : target.dataset.href;
 
         const selectedPost = state.data.posts.find(
-          ({ link }) => link === hrefLink
+          ({ link }) => link === hrefLink,
         );
 
         if (selectedPost) {
@@ -173,7 +169,7 @@ export default () => {
                   title,
                   link,
                   description,
-                })
+                }),
               );
               state.data.posts = [...newPosts, ...posts];
               state.loadingProcess = 'success';
